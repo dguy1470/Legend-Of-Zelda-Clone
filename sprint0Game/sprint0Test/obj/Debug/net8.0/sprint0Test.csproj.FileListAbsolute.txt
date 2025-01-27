@@ -24,3 +24,4 @@ C:\Users\david\OneDrive\Desktop\sprint0Game\sprint0Test\obj\Debug\net8.0\sprint0
 C:\Users\david\OneDrive\Desktop\sprint0Game\sprint0Test\obj\Debug\net8.0\sprint0Test.genruntimeconfig.cache
 C:\Users\david\OneDrive\Desktop\sprint0Game\sprint0Test\obj\Debug\net8.0\ref\sprint0Test.dll
 C:\Users\david\OneDrive\Desktop\sprint0Game\sprint0Test\bin\Debug\net8.0\Content\mario.xnb
+C:\Users\david\OneDrive\Desktop\sprint0Game\sprint0Test\bin\Debug\net8.0\Content\mario2.xnb

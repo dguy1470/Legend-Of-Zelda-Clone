@@ -21,11 +21,11 @@ namespace sprint0Test
     
         public void RegisterCommand()
         {
-            controllerMappings.Add(Keys.NumPad0, new QuitCommand(myGame));
-            controllerMappings.Add(Keys.NumPad1, new DispFixedSprite(myGame));
-            controllerMappings.Add(Keys.NumPad2, new DispFixedAnimatedSprite(myGame));
-            controllerMappings.Add(Keys.NumPad3, new DispUpDownSprite(myGame));
-            controllerMappings.Add(Keys.NumPad4, new DispLeftRightSprite(myGame));
+            controllerMappings.Add(Keys.NumPad0, new SetQuitCommand(myGame));
+            controllerMappings.Add(Keys.NumPad1, new SetDispFixedSprite(myGame));
+            controllerMappings.Add(Keys.NumPad2, new SetDispFixedAnimatedSprite(myGame));
+            controllerMappings.Add(Keys.NumPad3, new SetDispUpDownSprite(myGame));
+            controllerMappings.Add(Keys.NumPad4, new SetDispLeftRightSprite(myGame));
         }
         public void Update()
         {

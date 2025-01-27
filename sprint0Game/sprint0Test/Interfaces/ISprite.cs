@@ -10,8 +10,7 @@ namespace sprint0Test
 {
     public interface ISprite
     {
-        Rectangle GetSpriteRect();
-        void Draw(SpriteBatch spriteBatch, Vector2 location);
+        void Draw(SpriteBatch spriteBatch);
         void Update();
     
     }
