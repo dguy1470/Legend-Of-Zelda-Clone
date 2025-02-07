@@ -7,19 +7,20 @@ using sprint0Test.Sprites;
 
 namespace sprint0Test
 {
-    class SetDispLeftRightSprite : ICommand
+    class SetDispBlockA : ICommand
     {
-
         private Game1 myGame;
 
-        public SetDispLeftRightSprite(Game1 game)
+        
+
+        public SetDispBlockA(Game1 game)
         {
             myGame = game;
         }
 
         public void Execute()
         {
-            myGame.sprite = new LeftRightAnimatedPlayerSprite(myGame.spriteTexture);
+            //myGame.sprite = new BlockASpriteClass(myGame.spriteTexture)
         }
     }
 }

@@ -13,8 +13,9 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     public Texture2D spriteTexture;
     private Vector2 location;
-    List<object> controllerList;
+    List<IController> controllerList;
     public ISprite sprite;
+    
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -25,9 +26,10 @@ public class Game1 : Game
     protected override void Initialize()
     {
         // TODO: Add your initialization logic here
-        controllerList = new List<object>();
+        controllerList = new List<IController>();
         location = new Vector2();
         controllerList.Add(new KeyboardController(this));
+        controllerList.Add(new MouseController(this));
         base.Initialize();
     }
 
@@ -37,8 +39,8 @@ public class Game1 : Game
 
         // TODO: use this.Content to load your game content here
         spriteTexture = Content.Load<Texture2D>("mario2");
-        //sprite = new StandingInPlacePlayerSprite(spriteTexture);
-        sprite = new FixedAnimatedPlayerSprite(spriteTexture);
+        sprite = new StandingInPlacePlayerSprite(spriteTexture);
+        //sprite = new FixedAnimatedPlayerSprite(spriteTexture);
     }
 
     protected override void Update(GameTime gameTime)

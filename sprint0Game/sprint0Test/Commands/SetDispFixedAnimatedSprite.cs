@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using sprint0Test.Interfaces;
+using sprint0Test.Sprites;
 
 namespace sprint0Test
 {
@@ -17,7 +18,7 @@ namespace sprint0Test
 
         public void Execute()
         {
-            myGame.Exit();
+            myGame.sprite = new FixedAnimatedPlayerSprite(myGame.spriteTexture);
         }
     }
 }

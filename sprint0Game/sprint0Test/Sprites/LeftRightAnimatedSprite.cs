@@ -7,16 +7,13 @@ using System.Collections.Generic;
 namespace sprint0Test.Sprites
 {
 
-    class FixedAnimatedPlayerSprite : ISprite
+    class LeftRightAnimatedPlayerSprite : ISprite
     {
         private Texture2D texture;
         private int currentFrame = 0;
-        private int totalFrames = 4;   
+        private int totalFrames = 7;    
         private int threes = 0; 
-
-
-        
-        public FixedAnimatedPlayerSprite (Texture2D texture)
+        public LeftRightAnimatedPlayerSprite (Texture2D texture)
         {
             this.texture = texture;
         }
@@ -28,13 +25,13 @@ namespace sprint0Test.Sprites
             if(currentFrame == 0)
             {
                 sourceRectangle = new Rectangle(58, 0, 29, 36);
-                destinationRectangle = new Rectangle(300,
+                destinationRectangle = new Rectangle(200,
                 200, 108, 144);
             }
             else if(currentFrame == 1)
             {
                 sourceRectangle = new Rectangle(87, 0, 29, 36);
-                destinationRectangle = new Rectangle(300,
+                destinationRectangle = new Rectangle(250,
                 200, 108, 144);
             }
             else if(currentFrame == 2)
@@ -46,13 +43,37 @@ namespace sprint0Test.Sprites
             else if(currentFrame == 3)
             {
                 sourceRectangle = new Rectangle(87, 0, 29, 36);
+                destinationRectangle = new Rectangle(350,
+                200, 108, 144);
+            }
+            else if(currentFrame == 4)
+            {
+                sourceRectangle = new Rectangle(58, 0, 29, 36);
+                destinationRectangle = new Rectangle(400,
+                200, 108, 144);
+            }
+            else if(currentFrame == 5)
+            {
+                sourceRectangle = new Rectangle(87, 0, 29, 36);
+                destinationRectangle = new Rectangle(350,
+                200, 108, 144);
+            }
+            else if(currentFrame == 6)
+            {
+                sourceRectangle = new Rectangle(58, 0, 29, 36);
                 destinationRectangle = new Rectangle(300,
+                200, 108, 144);
+            }
+            else if(currentFrame == 7)
+            {
+                sourceRectangle = new Rectangle(87, 0, 29, 36);
+                destinationRectangle = new Rectangle(250,
                 200, 108, 144);
             }
             else
             {
                 sourceRectangle = new Rectangle(58, 0, 29, 36);
-                destinationRectangle = new Rectangle(300,
+                destinationRectangle = new Rectangle(200,
                 200, 108, 144);
             }
             spriteBatch.Draw(texture, destinationRectangle, sourceRectangle, Color.White);

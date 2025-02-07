@@ -17,6 +17,7 @@ namespace sprint0Test
         {
             myGame = game;
             controllerMappings = new Dictionary<Keys, ICommand>();
+            RegisterCommand();
         }
     
         public void RegisterCommand()
@@ -26,6 +27,15 @@ namespace sprint0Test
             controllerMappings.Add(Keys.NumPad2, new SetDispFixedAnimatedSprite(myGame));
             controllerMappings.Add(Keys.NumPad3, new SetDispUpDownSprite(myGame));
             controllerMappings.Add(Keys.NumPad4, new SetDispLeftRightSprite(myGame));
+            controllerMappings.Add(Keys.D0, new SetQuitCommand(myGame));
+            controllerMappings.Add(Keys.D1, new SetDispFixedSprite(myGame));
+            controllerMappings.Add(Keys.D2, new SetDispFixedAnimatedSprite(myGame));
+            controllerMappings.Add(Keys.D3, new SetDispUpDownSprite(myGame));
+            controllerMappings.Add(Keys.D4, new SetDispLeftRightSprite(myGame));
+            controllerMappings.Add(Keys.D5, new SetDispItemA(myGame));
+            controllerMappings.Add(Keys.D6, new SetDispBlockA(myGame));
+
+
         }
         public void Update()
         {

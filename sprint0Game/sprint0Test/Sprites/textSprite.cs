@@ -8,14 +8,21 @@ using System.Security.Cryptography.X509Certificates;
 namespace sprint0Test.Sprites
 {
 
-    class StandingInPlacePlayerSprite : ISprite
+    class textSprite : ISprite
     {
-        private Texture2D texture;
+        private Game1 game;
+        private SpriteFont text;
+        private String message;
+        private Vector2 location;
 
-        public StandingInPlacePlayerSprite (Texture2D texture)
+
+        public textSprite (Game1 myGame, String text, Vector2 loc)
         {
-            this.texture = texture;
+            game = myGame;
+            location = loc;
+            message = text;
         }
+
 
         public void Draw(SpriteBatch spriteBatch)
         {
@@ -26,7 +33,9 @@ namespace sprint0Test.Sprites
             destinationRectangle = new Rectangle(300,
             200, 108, 144);
             
-            spriteBatch.Draw(texture, destinationRectangle, sourceRectangle, Color.White);
+            //spriteBatch.Begin();
+            //spriteBatch.DrawString(spriteFont, text, center, Color.Black, 0f, new Vector2(0, 0), 1f, SpriteEffects.None,);
+            //spriteBatch.End();
             }
         public void Update()
         {
