@@ -8,9 +8,8 @@ using System.Text;
 
 namespace sprint0Test
 {
-    public interface ISprite
+    public interface IPlayer
     {
-        void Draw(SpriteBatch spriteBatch);
         void Update();
     
     }

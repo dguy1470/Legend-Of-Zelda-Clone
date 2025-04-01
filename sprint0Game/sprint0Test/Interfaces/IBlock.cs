@@ -8,8 +8,11 @@ using System.Text;
 
 namespace sprint0Test
 {
-    public interface ISprite
+    public interface IBlock : ICollidable
     {
+        public Vector2 Position { get; }
+
+        public Rectangle SourceRectangle { get; }
         void Draw(SpriteBatch spriteBatch);
         void Update();
     

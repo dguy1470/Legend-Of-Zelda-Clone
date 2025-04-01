@@ -9,9 +9,8 @@ namespace sprint0Test
 {
     class SetDispItemA : ICommand
     {
-        private Game1 myGame;
 
-        
+        private Game1 myGame;
 
         public SetDispItemA(Game1 game)
         {
@@ -20,7 +19,7 @@ namespace sprint0Test
 
         public void Execute()
         {
-            //myGame.sprite = new ItemASpriteClass(myGame.spriteTexture)
+            //myGame.sprite = new ItemSpriteClass(myGame.spriteTexture);
         }
     }
 }
