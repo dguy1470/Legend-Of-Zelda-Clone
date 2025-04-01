@@ -11,6 +11,7 @@ namespace sprint0Test.Sprites
     class StandingInPlacePlayerSprite : ISprite
     {
         private Texture2D texture;
+        //private Vector2 location; 
 
         public StandingInPlacePlayerSprite (Texture2D texture)
         {
@@ -26,7 +27,9 @@ namespace sprint0Test.Sprites
             destinationRectangle = new Rectangle(300,
             200, 108, 144);
             
+            //spriteBatch.Begin();
             spriteBatch.Draw(texture, destinationRectangle, sourceRectangle, Color.White);
+            //spriteBatch.End();
             }
         public void Update()
         {
