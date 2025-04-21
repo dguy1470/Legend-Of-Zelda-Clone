@@ -15,6 +15,9 @@ namespace sprint0Test.Sprites
         private float scale;
         public StaticSprite(Texture2D texture, float scale = 1.0f)
         {
+            if (texture == null)
+                throw new ArgumentNullException(nameof(texture), "❌ Tried to create a StaticSprite with a null texture!");
+
             this.texture = texture;
             this.scale = scale;
         }
@@ -27,16 +30,16 @@ namespace sprint0Test.Sprites
         public void Draw(SpriteBatch spriteBatch, Vector2 position)
         {
             spriteBatch.Draw(
-                texture,
-                position,
-                null,
-                Color.White,
-            0f,
-            Vector2.Zero,
-                scale,
-                SpriteEffects.None,
-                0f
-            );
+        texture,
+        position,
+        null,
+        Color.White,
+        0f,
+        new Vector2(texture.Width / 2f, texture.Height / 2f),
+        scale,
+        SpriteEffects.None,
+        0f
+    );
         }
     }
 }

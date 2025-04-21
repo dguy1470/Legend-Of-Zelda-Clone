@@ -5,29 +5,34 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using sprint0Test.Interfaces;
 using sprint0Test.Items;
+using sprint0Test.Sprites;
 using sprint0Test.Link1;
 using System;
 using sprint0Test.Dungeon;
+using System.Diagnostics;
+using sprint0Test.Enemy;
+using sprint0Test.Room;
+using System.Linq;
+using sprint0Test.Audio;
+using System.Reflection;
+
 namespace sprint0Test;
 
 public class Game1 : Game
 {
+    // Game1 Instance
+    public static Game1 Instance { get; private set; }
 
     public enum GameState
-    {
-    Playing,
-    Paused
-    }
+    {StartMenu, Playing, Options, Paused, Exiting}
+    public GameState _currentGameState = GameState.StartMenu;
 
-    private PauseMenu _pauseMenu;
-    public GameState _currentGameState = GameState.Playing;
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
     public Texture2D spriteTexture;
     List<IController> controllerList;
     public ISprite sprite;
     private SpriteFont _menuFont;
-    private BlockSprites blockSprites;
     private ItemFactory itemFactory;
     public List<IItem> itemList;
     public int currentItemIndex;
@@ -35,21 +40,73 @@ public class Game1 : Game
 
     public IItem currentItem;
 
-    RoomManager roomManager;
-    float roomScale;
+    //Start Menu
+    private Texture2D backgroundTexture;
+    private bool isFirstRun = true;
+    private String OptionsText = "WASD to Move \nSpace to Attack\nLeft Shift to Dash\nP to Pause\n\nESC (Go back)";
+    private MenuManager menuManager;
 
-    private PlayerBlockCollisionHandler playerBlockCollisionHandler;
-    private PlayerEnemyCollisionHandler playerEnemyCollisionHandler;
-    private PlayerItemCollisionHandler playerItemCollisionHandler;
-    private EnemyBlockCollisionHandler enemyBlockCollisionHandler;
-    private PlayerProjectileCollisionHandler playerProjectileCollisionHandler;
-    private ProjectileBlockCollisionHandler projectileBlockCollisionHandler;
+    // New Room Manager
+    public RoomManager roomManager;
+    float roomScale;
+    public RoomManager RoomManager => roomManager;
+
+    // New Collision Handler
+    private MasterCollisionHandler masterCollisionHandler;
+
+
+    // Pause-related fields
+    private PauseMenu _pauseMenu;
+    private bool isPaused;
+    private SpriteFont pauseFont;
+
+    private KeyboardState previousKeyboardState;
+    
+    //shaders
+    Effect Darkness;
+    private RenderTarget2D sceneRenderTarget;
+
+    // Code for the HUD
+    private Texture2D rupeeIcon;
+    int rupeeCount = 0;
+    private Texture2D heartTexture;
+    private List<Vector2> heartPositions = new();
+    Vector2 rupeePosition = new Vector2(650, 10);
+    private int collisionCount = 0;
+    private int maxHearts = 3;
+    private int currentHearts;
+
+ // —— God Mode 状态 —— 
+    private bool isGodMode = false;
+    private double godModeTimer = 0;    // 用于屏幕提示计时
+    private double refillTimer = 0;
+    private const double RefillDuration = 2.0;
+
+    private bool isPlayerDead;
+    private float respawnTimer;
+    private Vector2 playerRespawnPosition;
+
+    //private int collisionCount = 0;
+    private int totalHits = 0;
+    private int deathCount = 0;
+    private bool isGameOver = false;
+    private bool isGameWon = false;
+
+
+    // Minimap Stuff
+    private bool showFullMap = false;
+    private Texture2D mapTexture;
+    private Texture2D dotTexture;
+    private Dictionary<string, Point> roomMapPositions;
+
     public Game1()
     {
+        Instance = this; // Set the static instance
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
-        _graphics.PreferredBackBufferWidth = 800;
+        // 设置窗口尺寸 800x480
+        _graphics.PreferredBackBufferWidth = 735;
         _graphics.PreferredBackBufferHeight = 480;
         _graphics.ApplyChanges();
     }
@@ -57,6 +114,8 @@ public class Game1 : Game
     protected override void Initialize()
     {
         controllerList = new List<IController>();
+        //controllerList.Add(new KeyboardController(this, Link, blockSprites));
+        GraphicsDeviceHelper.Device = GraphicsDevice;
         base.Initialize();
     }
 
@@ -66,15 +125,47 @@ public class Game1 : Game
         _menuFont = Content.Load<SpriteFont>("MenuFont");
         _pauseMenu = new PauseMenu(Content.Load<SpriteFont>("MenuFont"));
         _pauseMenu.OnOptionSelected = HandleMenuSelection;
+        backgroundTexture = Content.Load<Texture2D>("StartScreen");
+        menuManager = new MenuManager(_menuFont, backgroundTexture);
 
-        var dungeonTexture = Content.Load<Texture2D>("TileSetDungeon");
-        blockSprites = new BlockSprites(dungeonTexture);
+
+        //SHaders
+        AudioManager.Instance.LoadContent(Content);
+        AudioManager.Instance.SetSong(SongList.Dungeon);
+        ShaderManager.Instance.LoadContent(Content);
+        //Darkness = Content.Load<Effect>("Darkness");
+
+        sceneRenderTarget = new RenderTarget2D(
+            GraphicsDevice,
+            GraphicsDevice.Viewport.Width,
+            GraphicsDevice.Viewport.Height);
+
+
+        masterCollisionHandler = new MasterCollisionHandler(); // Initialize the collision handler
         TextureManager.Instance.LoadContent(this);
-        EnemyManager.Instance.SpawnEnemy();
+        heartTexture = Content.Load<Texture2D>("heart");
+        rupeeIcon = Content.Load<Texture2D>("green-rupee");
+
         itemFactory = new ItemFactory();
 
-        //Register Textures
-        itemFactory.RegisterTexture("Heart", Content.Load<Texture2D>("heart"));
+        LoadItemTextures();
+        RegisterItems();
+
+        EnemyManager.Instance.SpawnEnemy();
+
+        var dungeonTexture = Content.Load<Texture2D>("TileSetDungeon");
+
+        // Load BlockManager
+        BlockManager.LoadTexture(Content.Load<Texture2D>("TileSetDungeon"));
+
+        ResetGameState();
+        //roomScale = Math.Min(800f / 256f, 480f / 176f);
+        //roomManager = new RoomManager(itemFactory);
+    }
+
+    private void LoadItemTextures()
+    {
+        itemFactory.RegisterTexture("Heart", heartTexture);
         itemFactory.RegisterTexture("RedPotion", Content.Load<Texture2D>("red-potion"));
         itemFactory.RegisterTexture("BluePotion", Content.Load<Texture2D>("blue-potion"));
         itemFactory.RegisterTexture("GreenPotion", Content.Load<Texture2D>("green-potion"));
@@ -83,8 +174,9 @@ public class Game1 : Game
         itemFactory.RegisterTexture("GreenRupee", Content.Load<Texture2D>("green-rupee"));
         itemFactory.RegisterTexture("Apple", Content.Load<Texture2D>("apple"));
         itemFactory.RegisterTexture("Crystal", Content.Load<Texture2D>("crystal"));
-        //itemFactory.RegisterTexture("Boomerang", Content.Load<Texture2D>("boomerang"));
-
+    }
+        private void RegisterItems()
+    {
         //Register Item Creation Logic
         itemFactory.RegisterItem("Heart", position => new Heart("Heart", itemFactory.GetTexture("Heart"), position));
         itemFactory.RegisterItem("RedPotion", position => new Potion("RedPotion", itemFactory.GetTexture("RedPotion"), position));
@@ -95,115 +187,215 @@ public class Game1 : Game
         itemFactory.RegisterItem("GreenRupee", position => new Rupee("GreenRupee", itemFactory.GetTexture("GreenRupee"), position));
         itemFactory.RegisterItem("Apple", position => new Apple("Apple", itemFactory.GetTexture("Apple"), position));
         itemFactory.RegisterItem("Crystal", position => new Crystal("Crystal", itemFactory.GetTexture("Crystal"), position));
+    }
+        private void ResetGameState()
+    {
+        // Clear managers if necessary
+        EnemyManager.Instance.Clear();
+        ProjectileManager.Instance.Clear();
+        BlockManager.Instance.Clear();
 
-        //itemFactory.RegisterItem("Boomerang", position => new Boomerang(itemFactory.GetTexture("Boomerang"), position, 1, 8));
+        // Reset room and enemies
+        roomManager = new RoomManager(itemFactory);
+        EnemyManager.Instance.SpawnEnemy();
 
+        // Reset Link
+        var linkSprite = new LinkSprite(LinkSprite.CreateDefaultSpriteMap(Content));
 
-        // 6) 初始化房间管理器
-        //   原房间尺寸256×176，窗口800×480，计算缩放
-        roomScale = Math.Min(800f / 256f, 480f / 176f);
-        roomManager = new RoomManager(dungeonTexture, roomScale, itemFactory);
+        if (isFirstRun)
+        {
+            Link.Initialize(linkSprite, new Vector2(200, 200), roomManager);
+            isFirstRun = false;
+        }
+        else
+        {
+            Link.Reset(linkSprite, new Vector2(200, 200));
+        }
 
-        // Link update code
-        var link1 = Content.Load<Texture2D>("Link1");
-        var link2 = Content.Load<Texture2D>("Link2");
-        var linkB1 = Content.Load<Texture2D>("LinkB1");
-        var linkB2 = Content.Load<Texture2D>("LinkB2");
-        var linkL1 = Content.Load<Texture2D>("LinkL1");
-        var linkL2 = Content.Load<Texture2D>("LinkL2");
-        var linkR1 = Content.Load<Texture2D>("LinkR1");
-        var linkR2 = Content.Load<Texture2D>("LinkR2");
+                //Minimap STuff
+        var dot = Content.Load<Texture2D>("dot");
+        var Map = Content.Load<Texture2D>("Map");
+        //Minimap STuff
+        mapTexture = Map;
+        dotTexture = dot;
 
-        var linkS1 = Content.Load<Texture2D>("LinkS1");
-        var linkS2 = Content.Load<Texture2D>("LinkS2");
-        var linkS3 = Content.Load<Texture2D>("LinkS3");
-        var linkS4 = Content.Load<Texture2D>("LinkS4");
+        roomMapPositions = new Dictionary<string, Point>
+        {
+            ["r1b"] = new Point(70, 270),
+            ["r1c"] = new Point(120, 270),
+            ["r1d"] = new Point(170, 270),
+            ["r2c"] = new Point(120, 230),
+            ["r3b"] = new Point(70, 170),
+            ["r3c"] = new Point(120, 170),
+            ["r3d"] = new Point(170, 170),
+            ["r4a"] = new Point(20, 120),
+            ["r4b"] = new Point(70, 120),
+            ["r4c"] = new Point(120, 120),
+            ["r4d"] = new Point(170, 120),
+            ["r4e"] = new Point(220, 120),
+            ["r5c"] = new Point(120, 70),
+            ["r5e"] = new Point(220, 70),
+            ["r5f"] = new Point(270, 70),
+            ["r6b"] = new Point(70, 20),
+            ["r6c"] = new Point(120, 20),
+            // ❌ exclude r8c (horde)
+        };
 
-        var linkBS1 = Content.Load<Texture2D>("LinkBS1");
-        var linkBS2 = Content.Load<Texture2D>("LinkBS2");
-        var linkBS3 = Content.Load<Texture2D>("LinkBS3");
-        var linkBS4 = Content.Load<Texture2D>("LinkBS4");
+        // Reset player stats
+        currentHearts = maxHearts;
+        isPlayerDead = false;
+        collisionCount = 0;
+        respawnTimer = 0;
+        InitializeHeartPositions();
 
-        var linkLS1 = Content.Load<Texture2D>("LinkLS1");
-        var linkLS2 = Content.Load<Texture2D>("LinkLS2");
-        var linkLS3 = Content.Load<Texture2D>("LinkLS3");
-        var linkLS4 = Content.Load<Texture2D>("LinkLS4");
+        // Reset controllers
+        controllerList.Clear();
+        controllerList.Add(new KeyboardController(this, Link));
+    }
 
-        var linkRS1 = Content.Load<Texture2D>("LinkRS1");
-        var linkRS2 = Content.Load<Texture2D>("LinkRS2");
-        var linkRS3 = Content.Load<Texture2D>("LinkRS3");
-        var linkRS4 = Content.Load<Texture2D>("LinkRS4");
+    public void ToggleGodMode()
+    {
+        isGodMode = !isGodMode;
+        Link.Instance.IsInvulnerable = isGodMode;
 
-        var linkH = Content.Load<Texture2D>("Linkh");
-        Dictionary<(LinkAction, LinkDirection), List<Texture2D>> linkMap =
-    new Dictionary<(LinkAction, LinkDirection), List<Texture2D>>();
+        // 倍增或恢复移动速度（私有字段 speed）
+        float baseSpeed = 2f, godSpeed = baseSpeed * 2;
+        typeof(Link)
+          .GetField("speed", BindingFlags.NonPublic | BindingFlags.Instance)
+          .SetValue(Link.Instance, isGodMode ? godSpeed : baseSpeed);
 
-        // Idle
-        linkMap.Add((LinkAction.Idle, LinkDirection.Down), new List<Texture2D> { link1 });
-        linkMap.Add((LinkAction.Idle, LinkDirection.Up), new List<Texture2D> { linkB1 });
-        linkMap.Add((LinkAction.Idle, LinkDirection.Left), new List<Texture2D> { linkL1 });
-        linkMap.Add((LinkAction.Idle, LinkDirection.Right), new List<Texture2D> { linkR1 });
+        godModeTimer = 3.0;  // 提示持续 3 秒
+    }
 
-        // Walking
-        linkMap.Add((LinkAction.Walking, LinkDirection.Down),
-            new List<Texture2D> { link1, link2 });
-        linkMap.Add((LinkAction.Walking, LinkDirection.Up),
-            new List<Texture2D> { linkB1, linkB2 });
-        linkMap.Add((LinkAction.Walking, LinkDirection.Left),
-            new List<Texture2D> { linkL1, linkL2 });
-        linkMap.Add((LinkAction.Walking, LinkDirection.Right),
-            new List<Texture2D> { linkR1, linkR2 });
+    // 立即恢复满血，并启动提示倒计时
+    public void RefillHealth()
+    {
+        // 重置碰撞计数
+        collisionCount = 0;
+        // 满血
+        currentHearts = maxHearts;
+        // 重新计算心心位置
+        InitializeHeartPositions();
 
-        // Attacking
-        linkMap.Add((LinkAction.Attacking, LinkDirection.Down),
-            new List<Texture2D> { linkS1, linkS2, linkS3, linkS4 });
-        linkMap.Add((LinkAction.Attacking, LinkDirection.Up),
-            new List<Texture2D> { linkBS1, linkBS2, linkBS3, linkBS4 });
-        linkMap.Add((LinkAction.Attacking, LinkDirection.Left),
-            new List<Texture2D> { linkLS1, linkLS2, linkLS3, linkLS4 });
-        linkMap.Add((LinkAction.Attacking, LinkDirection.Right),
-            new List<Texture2D> { linkRS1, linkRS2, linkRS3, linkRS4 });
+        //如果之前因碰撞落到死亡状态，要复活
+        isPlayerDead = false;
 
-        // Damage
-        linkMap.Add((LinkAction.Damaged, LinkDirection.Down),
-            new List<Texture2D> { linkH });
-        linkMap.Add((LinkAction.Damaged, LinkDirection.Up),
-            new List<Texture2D> { linkH });
-        linkMap.Add((LinkAction.Damaged, LinkDirection.Left),
-            new List<Texture2D> { linkH });
-        linkMap.Add((LinkAction.Damaged, LinkDirection.Right),
-            new List<Texture2D> { linkH });
+        // 启动提示计时
+        refillTimer = RefillDuration;
 
-        LinkSprite linkSprite = new LinkSprite(linkMap);
+        // 日志输出，方便调试
+        Console.WriteLine($"[Cheat] RefillHealth called. currentHearts={currentHearts}, isPlayerDead={isPlayerDead}");
+    }
 
-        playerBlockCollisionHandler = new PlayerBlockCollisionHandler();
-        playerEnemyCollisionHandler = new PlayerEnemyCollisionHandler();
-        playerItemCollisionHandler = new PlayerItemCollisionHandler();
-        enemyBlockCollisionHandler = new EnemyBlockCollisionHandler();
-        playerProjectileCollisionHandler = new PlayerProjectileCollisionHandler();
-        projectileBlockCollisionHandler = new ProjectileBlockCollisionHandler();
+    public void HandlePlayerDamage()
+    {
+        collisionCount++; // Track hits
+        totalHits++;
+        Console.WriteLine($"Collision Count: {collisionCount}");
 
-        // Link = new Link(linkSprite, new Vector2(200, 200));
-        Link.Initialize(linkSprite, new Vector2(200, 200));
+        if (collisionCount % 2 == 0 && currentHearts > 0)
+        {
+            currentHearts--;
+            InitializeHeartPositions(); // Update heart UI
+            Console.WriteLine($"Heart lost! Current Hearts: {currentHearts}, Total Hits: {totalHits}");
+        }
 
-        controllerList.Add(new KeyboardController(this, Link, blockSprites));
+        if (collisionCount >= 6)
+        {
+            isPlayerDead = true;
+            playerRespawnPosition = Link.Instance.Position; // Save respawn point
+            respawnTimer = 3f;
+            collisionCount = 0;
+            currentHearts = maxHearts; // Restore full hearts
+            InitializeHeartPositions(); // Update heart UI
+            Console.WriteLine("Player is dead! Respawning in 3 seconds.");
+        }
+    }
 
+    private void TryRemoveHeart()
+    {
+        if (collisionCount % 2 == 0 && currentHearts > 0)
+        {
+            currentHearts--;
+            InitializeHeartPositions(); // Update heart UI
+            Console.WriteLine($"Heart lost! Current Hearts: {currentHearts}");
+        }
+    }
 
+    private void CheckDeath()
+    {
+        if (collisionCount >= 6 && !isPlayerDead)
+        {
+            isPlayerDead = true;
+            playerRespawnPosition = Link.Instance.Position;
+            respawnTimer = 2f;
+            currentHearts = maxHearts;
+            InitializeHeartPositions();
+
+            Console.WriteLine("Player is dead! Respawning in 2 seconds.");
+
+            collisionCount = 0;
+            deathCount++;
+        }
+    }
+
+    private void CheckGameOver()
+    {
+        if (deathCount >= 2 && !isGameOver)
+        {
+            isGameOver = true;
+            Console.WriteLine("Game Over: You Lose!");
+        }
+    }
+
+    // Heart Helper Methods
+    private void InitializeHeartPositions()
+    {
+        heartPositions.Clear();  // Reset positions
+        float heartSpacing = 30f;
+        Vector2 heartPosition = new Vector2(10, 10);
+
+        for (int i = 0; i < currentHearts; i++)  // Draw only current hearts
+        {
+            heartPositions.Add(heartPosition);
+            heartPosition.X += heartSpacing;
+        }
+    }
+
+    private void HandleMouseTeleportation()
+    {
+        MouseState mouseState = Mouse.GetState();
+
+        if (mouseState.LeftButton == ButtonState.Pressed)
+        {
+            Vector2 mousePosition = new Vector2(mouseState.X, mouseState.Y);
+
+            Link.Instance.SetPosition(mousePosition);
+
+            Console.WriteLine($"Teleported player to {mousePosition}");
+        }
+    }
+
+    public void ChangeGameState(GameState newState)
+    {
+    _currentGameState = newState;
+    if (newState == GameState.Exiting)
+        Exit();
     }
 
     private void HandleMenuSelection(int selectedIndex)
     {
         switch (selectedIndex)
         {
-        case 0: // Resume
-            _currentGameState = GameState.Playing;
-            break;
-        case 1: // Restart
-            RestartGame();
-            break;
-        case 2: // Quit
-            Exit();
-            break;
+            case 0: // Resume
+                _currentGameState = GameState.Playing;
+                break;
+            case 1: // Restart
+                RestartGame();
+                break;
+            case 2: // Quit
+                Exit();
+                break;
         }
     }
     private void RestartGame()
@@ -212,82 +404,257 @@ public class Game1 : Game
         _currentGameState = GameState.Playing;
     }
 
+    //minimap command
+    public void ToggleFullMap()
+    {
+        showFullMap = !showFullMap;
+    }
+
     protected override void Update(GameTime gameTime)
     {
-        if (_currentGameState == GameState.Paused)
-        {
-        _pauseMenu.Update();
-        return;
-        }
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
-            Exit();
-        foreach (IController controller in controllerList)
-        {controller.Update();}
+
         switch (_currentGameState)
         {
+        case GameState.StartMenu:
+            menuManager.Update(this);
+            break;
         case GameState.Playing:
-        // sprite.Update();
-        foreach (var item in roomManager.GetCurrentRoomItems()) {item.Update(gameTime);}
+                
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))Exit();
 
-        blockSprites.UpdateActiveBlocks(); // Call to update active blocks
+            masterCollisionHandler.HandleCollisions(
+            roomManager.GetCurrentRoomItems(),
+            roomManager.CurrentRoom.Enemies,
+            ProjectileManager.Instance.GetActiveProjectiles(),
+            BlockManager.Instance.GetActiveBlocks());
+            base.Update(gameTime);
+            Vector2 linkSize = Link.Instance.GetScaledDimensions();
+            roomManager.Update(gameTime); // This is crucial    
 
-        EnemyManager.Instance.Update(gameTime);
-        ProjectileManager.Instance.Update(gameTime);
-        Link.Instance.Update();
+            // Toggle pause only when Tab is pressed once
+            var keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.Tab) && previousKeyboardState.IsKeyUp(Keys.Tab))
+            {
+                isPaused = !isPaused;
+            }
+            previousKeyboardState = keyboardState; // Store state for next frame
 
-        playerBlockCollisionHandler.HandleCollisionList(blockSprites._active);
-        playerEnemyCollisionHandler.HandleCollision(EnemyManager.Instance.GetActiveEnemy());
-        playerItemCollisionHandler.HandleCollisionList(roomManager.GetCurrentRoomItems());
-        enemyBlockCollisionHandler.HandleCollisionList(blockSprites._active, EnemyManager.Instance.GetActiveEnemy());
-        playerProjectileCollisionHandler.HandleCollisionList(ProjectileManager.Instance.GetActiveProjectiles());
-        projectileBlockCollisionHandler.HandleCollisionList(blockSprites._active, ProjectileManager.Instance.GetActiveProjectiles());
+            // If paused, do not update game logic
+            if (isPaused)
+                return;
 
-        base.Update(gameTime);
-        Vector2 linkSize = Link.Instance.GetScaledDimensions();
+            if (!isGameWon && roomManager.CurrentRoom != null && roomManager.CurrentRoom.RoomID == "r5e")
+            {
+                // Check if Aquamentus has been defeated
+                var aquamentusStillExists = roomManager.CurrentRoom.Enemies
+                    .OfType<Aquamentus>()
+                    .Any();
 
-        base.Update(gameTime);
-        if (roomManager.IsLinkAtDoor(Link.Instance.Position, linkSize))
-        {
-            // Get mouse state
-            MouseState mouseState = Mouse.GetState();
+                if (!aquamentusStillExists)
+                {
+                    isGameWon = true;
+                }
+            }
 
-            // Move to the next room only if the player left-clicks
-            if (mouseState.LeftButton == ButtonState.Pressed)
-            {roomManager.NextRoom();}
-        }
-        break;
+            foreach (IController controller in controllerList)
+            {
+                controller.Update();
+            }
+            // sprite.Update();
+            foreach (var item in roomManager.GetCurrentRoomItems())
+            {
+                item.Update(gameTime);
+            }
+            EnemyManager.Instance.Update(gameTime);
+            ProjectileManager.Instance.Update(gameTime);
+            Link.Instance.Update(gameTime);
 
+            // Player Dead Animation
+            if (isPlayerDead)
+            {
+                respawnTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+                if (respawnTimer <= 0)
+                {
+                    isPlayerDead = false;
+                    collisionCount = 0;
+                    currentHearts = maxHearts; // Reset to 3 hearts
+                    Link.Instance.SetPosition(playerRespawnPosition);
+                    InitializeHeartPositions(); // Refresh heart display
+                }
+                return;
+            }
+                break;
+        case GameState.Options:
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            {
+                _currentGameState = Game1.GameState.StartMenu;
+            }
+            break;
         case GameState.Paused:
-        return;
+            _pauseMenu.Update();
+            break;
         }
- 
+
+        HandleMouseTeleportation();
+        base.Update(gameTime);
+        roomManager.CheckDoorTransition();
     }
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.CornflowerBlue);
+        if(_currentGameState == GameState.Playing){ GraphicsDevice.SetRenderTarget(sceneRenderTarget); }
+
+        GraphicsDevice.Clear(Color.Black);
         _spriteBatch.Begin();
 
-    if (_currentGameState == GameState.Playing)
-    {
-        roomManager.DrawRoom(_spriteBatch);
-        ProjectileManager.Instance.Draw(_spriteBatch); // Ensure this is present
-
-        // sprite.Draw(_spriteBatch);
-        var items = roomManager.GetCurrentRoomItems();
-        if (items != null)
+        switch (_currentGameState)
         {
-            foreach (var item in items) {item.Draw(_spriteBatch);}
+        case GameState.StartMenu:
+            menuManager.Draw(_spriteBatch, GraphicsDevice);
+            break;
+        case GameState.Paused:
+            _pauseMenu.Draw(_spriteBatch, GraphicsDevice);
+            break;
+        case GameState.Playing:
+            
+            roomManager.Draw(_spriteBatch);
+            ProjectileManager.Instance.Draw(_spriteBatch);
+            BlockManager.Instance.Draw(_spriteBatch);
+
+            _spriteBatch.Draw(rupeeIcon, rupeePosition, Color.White);
+            _spriteBatch.DrawString(_menuFont, "x "+ rupeeCount.ToString(), rupeePosition + new Vector2(rupeeIcon.Width + 5, 0), Color.White);
+            var items = roomManager.GetCurrentRoomItems();
+            if (items != null)
+            {
+                foreach (var item in items)
+                {
+                    item.Draw(_spriteBatch);
+                }
+            }
+            if (!isPlayerDead)
+            {
+                // Draw hearts based on currentHearts
+                for (int i = 0; i < currentHearts; i++)
+                {
+                    _spriteBatch.Draw(heartTexture, heartPositions[i], Color.White);
+                    Console.WriteLine($"Drawing heart at position {heartPositions[i]}"); // Debugging heart drawing
+                }
+
+                Link.Instance.Draw(_spriteBatch); // Draw Link
+            }
+            if (godModeTimer > 0)
+            {
+                string msg = isGodMode
+                    ? "GOD MODE ACTIVATED!"
+                    : "GOD MODE Closed!";
+                Vector2 size = _menuFont.MeasureString(msg);
+                Vector2 pos = new Vector2(
+                    (_graphics.PreferredBackBufferWidth - size.X) / 2,
+                    20);
+                _spriteBatch.DrawString(_menuFont, msg, pos, Color.Yellow);
+            }
+            if (items != null)
+            {
+                foreach (var item in items)
+                {
+                    item.Draw(_spriteBatch);
+                }
+            }
+
+            if (Link.Instance != null)
+            {
+                Link.Instance.Draw(_spriteBatch);
+            }
+            else
+            {
+                Console.WriteLine("Error: Link.Instance is null in Draw()!");
+            }
+            if (godModeTimer > 0)
+            {
+                string msg = isGodMode
+                    ? "GOD MODE ACTIVATED!"
+                    : "GOD MODE Closed!";
+                Vector2 size = _menuFont.MeasureString(msg);
+                Vector2 pos = new Vector2(
+                    (_graphics.PreferredBackBufferWidth - size.X) / 2,
+                    20);
+                _spriteBatch.DrawString(_menuFont, msg, pos, Color.Yellow);
+            }
+
+            EnemyManager.Instance.Draw(_spriteBatch);
+
+            // ✅ ✅ ✅ Move minimap/fullmap drawing *before* End()
+            if (showFullMap)
+            {
+                _spriteBatch.Draw(mapTexture, new Rectangle(0, 0, 800, 600), Color.White);
+
+                if (roomMapPositions.TryGetValue(roomManager.CurrentRoom.RoomID, out Point mapPos))
+                {
+                }
+            }
+            else if (roomManager.CurrentRoom.RoomID != "r8c")
+            {
+                _spriteBatch.Draw(mapTexture, new Rectangle(650, 380, 100, 100), Color.White);
+
+                if (roomMapPositions.TryGetValue(roomManager.CurrentRoom.RoomID, out Point mapPos))
+                {
+                    int scaledX = (int)(mapPos.X * 100f / 300f);
+                    int scaledY = (int)(mapPos.Y * 100f / 300f);
+                    _spriteBatch.Draw(dotTexture, new Rectangle(650 + scaledX, 380 + scaledY, 3, 3), Color.Red);
+                }
+            }
+        break;
+        case GameState.Options:
+            _spriteBatch.DrawString(_menuFont, OptionsText, new Vector2(250, 150), Color.White);
+            break;
         }
-        if (Link.Instance != null) {Link.Instance.Draw(_spriteBatch);}
 
-        else {Console.WriteLine("Error: Link.Instance is null in Draw()!");}
+        if (isPaused)
+        {
+            string pauseText = "Game Paused\nPress 'Tab' to Resume";
+            Vector2 textSize = _menuFont.MeasureString(pauseText);
+            Vector2 position = new Vector2(
+                (_graphics.PreferredBackBufferWidth - textSize.X) / 2,
+                (_graphics.PreferredBackBufferHeight - textSize.Y) / 2);
+            _spriteBatch.DrawString(_menuFont, pauseText, position, Color.White);
+        }
 
-        blockSprites.DrawActiveBlocks(_spriteBatch); // Call to draw active blocks
-        EnemyManager.Instance.Draw(_spriteBatch);
-    }
-    else if (_currentGameState == GameState.Paused) {_pauseMenu.Draw(_spriteBatch, GraphicsDevice);}
+
+        if (isGameOver)
+        {
+            string loseMessage = "You lose!\nPress 'Esc' to quit";
+            Vector2 size = pauseFont.MeasureString(loseMessage);
+            Vector2 center = new Vector2(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height / 2);
+            Vector2 position = center - (size / 2);
+
+            _spriteBatch.DrawString(pauseFont, loseMessage, position, Color.White);
+        }
+
+        if (isGameWon)
+        {
+            string winMessage = "You win!\nPress 'Esc' to quit";
+            Vector2 size = pauseFont.MeasureString(winMessage);
+            Vector2 center = new Vector2(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height / 2);
+            Vector2 position = center - (size / 2);
+
+            _spriteBatch.DrawString(pauseFont, winMessage, position, Color.White);
+        }
         _spriteBatch.End();
+
+        //shaders
+        if (_currentGameState == GameState.Playing){
+             GraphicsDevice.SetRenderTarget(null);
+        GraphicsDevice.Clear(Color.CornflowerBlue);
+
+        ShaderManager.ApplyShading(
+            _spriteBatch,
+            sceneRenderTarget,
+            GraphicsDevice
+        );
+        }
+    
+
         base.Draw(gameTime);
     }
+
 }
