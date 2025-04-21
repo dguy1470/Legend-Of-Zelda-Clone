@@ -10,9 +10,10 @@ namespace sprint0Test.Enemy
     {
         private Random random;
         private Vector2 movementDirection;
-        private float movementSpeed = 1.5f;
+        private float movementSpeed = 0.7f; //Sprint5 Movement Speed
         private float changeDirectionCooldown = 2.0f;
         private float currentCooldown = 0f;
+        private int health = 2;
 
         public Octorok(Vector2 startPosition, Dictionary<string, Texture2D> Octorok_textures)
             : base(startPosition, new Texture2D[]
@@ -21,8 +22,8 @@ namespace sprint0Test.Enemy
                 Octorok_textures["Octopus_Idle2"]
             })
         {
-            detectionRadius = 150f; // Detects player from medium distance
-            attackRange = 100f; // Attacks from range
+            detectionRadius = 300f; // Detects player from medium distance
+            attackRange = 300f; // Attacks from range
             random = new Random();
             SetRandomDirection();
         }

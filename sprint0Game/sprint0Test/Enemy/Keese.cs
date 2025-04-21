@@ -14,6 +14,7 @@ public class Keese : AbstractEnemy
     private bool isSwooping = false;
     private float attackCooldown = 3f;
     private float attackTimer = 0f;
+    private int health = 1;
 
     public Keese(Vector2 startPosition, Dictionary<string, Texture2D> Keese_textures)
         : base(startPosition, new Texture2D[]
@@ -50,7 +51,8 @@ public class Keese : AbstractEnemy
         if (isSwooping)
         {
             Vector2 direction = Vector2.Normalize(Link.Instance.Position - position);
-            position += direction * 2f;
+            //Sprint5 Speed Adjustment
+            position += direction * 1.0f;
 
             if (Vector2.Distance(position, Link.Instance.Position) < 0.2f && attackTimer >= attackCooldown)
             {

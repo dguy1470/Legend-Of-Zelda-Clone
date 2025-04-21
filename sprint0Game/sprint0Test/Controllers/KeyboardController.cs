@@ -6,6 +6,8 @@ using sprint0Test.Interfaces;
 using System.Collections.Generic;
 using sprint0Test.Commands;
 using sprint0Test.Link1;
+using System.Linq;
+
 
 // DISCUSS KEYBOARD STATES
 
@@ -19,13 +21,31 @@ namespace sprint0Test
         private KeyboardState previousKeyboardState;
         private Link Link;
         private Game1 myGame;
-        private BlockSprites blockSprites;
 
-        public KeyboardController(Game1 game, Link link, BlockSprites blockSprites)
+        private readonly List<Keys> cheatBuffer = new List<Keys>();
+        private static readonly Keys[] konami = new[]
+        {
+            Keys.Up, Keys.Up,
+            Keys.Down, Keys.Down,
+            Keys.Left, Keys.Right,
+            Keys.Left, Keys.Right,
+            Keys.B,   Keys.A,
+            Keys.B,   Keys.A
+         };
+        // ??????
+        private static readonly Keys[] refillSeq = new[]
+        {
+           Keys.Left, Keys.Left,
+           Keys.Right, Keys.Right,
+           Keys.B,    Keys.A
+         };
+        //private BlockSprites blockSprites;
+
+        public KeyboardController(Game1 game, Link link)
         {
             myGame = game;
             this.Link = link;
-            this.blockSprites = blockSprites;
+
 
             continuousCommands = new Dictionary<Keys, ICommand>();
             singlePressCommands = new Dictionary<Keys, ICommand>();
@@ -43,19 +63,23 @@ namespace sprint0Test
             continuousCommands.Add(Keys.D, new MoveRightCommand(myGame));
 
             // Commands that should execute once when key is pressed
-
-            singlePressCommands.Add(Keys.F2, new NextEnemyCommand());
-            singlePressCommands.Add(Keys.F1, new PreviousEnemyCommand());
-            singlePressCommands.Add(Keys.L, new EnemyAttackCommand());
-            
-            singlePressCommands.Add(Keys.E, new LinkAttackCommand(myGame));
-            singlePressCommands.Add(Keys.R, new TakeDamageCommand(myGame));
-            singlePressCommands.Add(Keys.F3, new SetBlock(blockSprites));
-            singlePressCommands.Add(Keys.F4, new CycleItemCommand(myGame, -1));
-            singlePressCommands.Add(Keys.F5, new CycleItemCommand(myGame, 1));
-
             singlePressCommands.Add(Keys.Q, new QuitCommand(myGame));
             singlePressCommands.Add(Keys.P, new PauseCommand(myGame));
+
+
+            singlePressCommands.Add(Keys.Space, new LinkAttackCommand(myGame));
+            singlePressCommands.Add(Keys.E, new TakeDamageCommand(myGame));
+
+            singlePressCommands.Add(Keys.H, new HordeModeCommand(myGame));
+            singlePressCommands.Add(Keys.M, new ShowFullMapCommand(myGame));
+            singlePressCommands.Add(Keys.U, new MoveToTestingRoomCommand(myGame));
+            singlePressCommands.Add(Keys.I, new MoveToStartRoomCommand(myGame));
+            singlePressCommands.Add(Keys.T, new ToggleDark(myGame));
+
+            singlePressCommands.Add(Keys.PageUp, new VolumeUp(myGame));
+            singlePressCommands.Add(Keys.PageDown, new VolumeDown(myGame));
+            singlePressCommands.Add(Keys.RightAlt, new Mute(myGame));
+            singlePressCommands.Add(Keys.LeftShift, new LinkDashCommand(myGame));
 
         }
 
@@ -80,6 +104,26 @@ namespace sprint0Test
                     previousKeyboardState.IsKeyUp(key)) //only run once per press
                 {
                     command.Execute();
+                }
+            }
+            // �� ????? �� //
+            foreach (var key in pressedKeys)
+            {
+                if (previousKeyboardState.IsKeyUp(key))
+                {
+                    cheatBuffer.Add(key);
+                    if (cheatBuffer.Count > konami.Length)
+                        cheatBuffer.RemoveAt(0);
+                    if (cheatBuffer.SequenceEqual(konami))
+                    {
+                        Game1.Instance.ToggleGodMode();
+                        cheatBuffer.Clear();
+                    }
+                        else if (cheatBuffer.SequenceEqual(refillSeq))
+                    {
+                        Game1.Instance.RefillHealth();
+                        cheatBuffer.Clear();
+                    }
                 }
             }
 

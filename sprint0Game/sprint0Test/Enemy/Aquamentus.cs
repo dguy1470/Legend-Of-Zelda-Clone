@@ -8,12 +8,13 @@ namespace sprint0Test.Enemy
 {
     public class Aquamentus : AbstractEnemy
     {
-        private float attackCooldown = 3.0f; // Attack every 3 seconds
+        private float attackCooldown = 1.0f; // Attack every 3 seconds
         private float currentCooldown = 0f; // Timer to track attack cooldown
-        private float speed = 1.5f; // Movement speed
+        private float speed = 0.5f; // Sprint5 Movement speed
         private float upperLimit;
         private float lowerLimit;
         private int direction = 1; // 1 for down, -1 for up
+        private int health = 6;
 
         public Aquamentus(Vector2 startPosition, float movementRange)
             : base(startPosition, new Texture2D[]
@@ -22,7 +23,7 @@ namespace sprint0Test.Enemy
                 TextureManager.Instance.GetTexture("Dragon_Idle2")
             })
         {
-            attackRange = 50f; // Set custom attack range for Aquamentus
+            attackRange = 100f; // Set custom attack range for Aquamentus
             upperLimit = startPosition.Y - movementRange;
             lowerLimit = startPosition.Y + movementRange;
         }
